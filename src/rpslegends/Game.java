@@ -3,19 +3,278 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
  */
 package rpslegends;
-
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.sql.ResultSet;
+import javax.swing.*;
+import java.awt.*;
+import java.util.Random;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 /**
  *
  * @author SAu
  */
 public class Game extends javax.swing.JFrame {
 
-    /**
-     * Creates new form Game
-     */
+    private int userId;
+    private String userName;
+    private int win = 0;
+
+public Game(int userId, String userName) {
+    initComponents();
+    this.userId = userId;
+    this.userName = userName;
+    Logging(0);
+}
+    
+    String GLPlayerChoice;
+    String GLCPUChoice;
+    int health = 3;
+    int score = 0;
+        
+        
     public Game() {
         initComponents();
+        BtnGo.setEnabled(false);
+        
     }
+    
+    private void CPUChoice() { // Sekalian submit
+        String[] choices = {"Rock","Paper","Scissors"};
+        Random rand = new Random();
+        try {
+            Thread.sleep(250);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        int index = rand.nextInt(choices.length);
+        String CPUChoice = choices[index];
+        String imagePath = "src/assets/images/" + CPUChoice + ".png";
+        // LOGS SCRIPT HERE | LOGS SCRIPT HERE | LOGS SCRIPT HERE | LOGS SCRIPT HERE | 
+        ImageIcon originalIcon = new ImageIcon(imagePath);
+        Image originalImage = originalIcon.getImage();
+        int width = 100;
+        int height = 100;
+        Image resizedImage = originalImage.getScaledInstance(width, height, Image.SCALE_SMOOTH);
+
+        ImgCPU.setIcon(new ImageIcon(resizedImage));
+        ImgCPU.repaint();
+        
+        System.out.println("CPU chose: " + CPUChoice);
+        GLCPUChoice = CPUChoice;
+        Scoring();
+    }
+
+    private void Scoring(){
+        System.out.println("Scoring running");
+        String result;
+        String playerChoice = GLPlayerChoice;
+        String CPUChoice = GLCPUChoice;
+        int HealthBefore = health;
+        int ScoreBefore = score;
+        
+        if (playerChoice.equals(CPUChoice)) {
+        result = "Draw!";
+        } 
+        else if ((playerChoice.equals("Rock") && CPUChoice.equals("Scissors")) ||
+                (playerChoice.equals("Scissors") && CPUChoice.equals("Paper")) ||
+                (playerChoice.equals("Paper") && CPUChoice.equals("Rock"))) {
+            result = "You win!";
+            score++;
+            System.out.println("Player wins");
+        } else {
+            result = "You lost!";
+            health--;
+            System.out.println("Player lost");
+            if (health <= 0) {
+                result = "Game Over!";
+                BtnRock.setEnabled(false);
+                BtnPaper.setEnabled(false);
+                BtnScissors.setEnabled(false);
+                BtnGo.setFocusable(false);
+                BtnGo.setEnabled(false);
+                
+            }
+        }
+        
+        Announcer.setText(result);
+        LabelHealth.setText("Health: " + health + "/3");
+        LabelScore.setText("SCORE: " + score);
+        System.out.println("Health: " + HealthBefore + " -> " + health);
+        System.out.println("Score: " + ScoreBefore + " -> " + score);
+        Logging(1);
+        if (health <= 0) {
+            System.out.println("Game over");
+            NameFrame();
+            Logging(2);
+        }
+    }
+    
+    public void NameFrame() {
+    String userName = JOptionPane.showInputDialog(this, "Enter your name.");
+    if (userName != null && !userName.isEmpty()) {
+        updateNamaPengguna(userName);
+        simpanLeaderboard(score);
+        Leaderboard obj = new Leaderboard();
+        obj.setVisible(true);
+        this.dispose();
+    } else {
+        
+    }
+    }
+    
+    private void updateNamaPengguna(String userName) {
+        try {
+            Connection conn = DBConnect.getConnection();
+            if (conn != null) {
+                try {
+                    if (userName.length() > 20) {
+                        userName = userName.substring(0, 20);
+                    }
+                    String query = "UPDATE users SET user_name = ? WHERE id_user = ?";
+                    PreparedStatement pstmt = conn.prepareStatement(query);
+                    pstmt.setString(1, userName);
+                    pstmt.setInt(2, userId);
+                    pstmt.executeUpdate();
+                    pstmt.close();
+                    conn.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }   } catch (SQLException ex) {
+            Logger.getLogger(Game.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    
+    private void Logging(int act) {
+        String caseAction;
+        switch (act) {
+            case 0:
+                caseAction = "Game Start";
+                break;
+            case 1:
+                caseAction = "Player chose " + GLPlayerChoice + ", CPU chose " + GLCPUChoice;
+                break;
+            case 2:
+                caseAction = "Player lost the game";
+                break;
+            default:
+                caseAction = "Error, undocumented action";
+                break;
+        }
+        try {
+            Connection conn = DBConnect.getConnection();
+            if (conn != null) {
+                try {
+                    String query = "INSERT INTO logs (id_user, action, time_stamp) VALUES (?, ?, NOW())";
+                    PreparedStatement pstmt = conn.prepareStatement(query);
+                    pstmt.setInt(1, userId);
+                    pstmt.setString(2, caseAction);
+                    pstmt.executeUpdate();
+                    pstmt.close();
+                    conn.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }   } catch (SQLException ex) {
+            Logger.getLogger(Game.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    
+private void simpanLeaderboard(int score) {
+        try {
+            Connection conn = DBConnect.getConnection();
+            if (conn != null) {
+                try {
+                    if (cekIdUserDiLeaderboard(userId)) {
+                        updateLeaderboard(score);
+                    } else {
+                        String query = "INSERT INTO leaderboard (id_user, score) VALUES (?, ?)";
+                        PreparedStatement pstmt = conn.prepareStatement(query);
+                        pstmt.setInt(1, userId);
+                        pstmt.setInt(2, score);
+                        pstmt.executeUpdate();
+                        pstmt.close();
+                    }
+                    conn.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }   } catch (SQLException ex) {
+            Logger.getLogger(Game.class.getName()).log(Level.SEVERE, null, ex);
+        }
+}
+
+private boolean cekIdUserDiLeaderboard(int userId) {
+        try {
+            Connection conn = DBConnect.getConnection();
+            if (conn != null) {
+                try {
+                    String query = "SELECT id_user FROM leaderboard WHERE id_user = ?";
+                    PreparedStatement pstmt = conn.prepareStatement(query);
+                    pstmt.setInt(1, userId);
+                    ResultSet rs = pstmt.executeQuery();
+                    if (rs.next()) {
+                        return true;
+                    }
+                    rs.close();
+                    pstmt.close();
+                    conn.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+            return false; // id_user tidak ditemukan di leaderboard
+        } catch (SQLException ex) {
+            Logger.getLogger(Game.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return false;
+}
+
+
+private void updateLeaderboard(int score) {
+        try {
+            Connection conn = DBConnect.getConnection();
+            if (conn != null) {
+                try {
+                    String query = "UPDATE leaderboard SET score = ? WHERE id_user = ?";
+                    PreparedStatement pstmt = conn.prepareStatement(query);
+                    pstmt.setInt(1, score);
+                    pstmt.setInt(2, userId);
+                    pstmt.executeUpdate();
+                    pstmt.close();
+                    conn.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }   } catch (SQLException ex) {
+            Logger.getLogger(Game.class.getName()).log(Level.SEVERE, null, ex);
+        }
+}
+
+
+    private void SelectChoice(String choice){
+        if (choice != null) {
+            String imagePath = "src/assets/images/" + choice + ".png";
+        
+            ImageIcon oriIcon = new ImageIcon(imagePath);
+            Image oriImg = oriIcon.getImage();
+            int width = 100;
+            int height = 100;
+            Image resizedImage = oriImg.getScaledInstance(width, height, Image.SCALE_SMOOTH);
+
+            ImgPlayer.setIcon(new ImageIcon(resizedImage));
+            ImgPlayer.repaint();
+            
+            System.out.println("Player chose: " + choice);
+            GLPlayerChoice = choice;
+        }
+    }
+    
+    
 
     /**
      * This method is called from within the constructor to initialize the form.
@@ -26,9 +285,8 @@ public class Game extends javax.swing.JFrame {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        jLabel1 = new javax.swing.JLabel();
-        jLabel2 = new javax.swing.JLabel();
-        jLabel3 = new javax.swing.JLabel();
+        LabelHealth = new javax.swing.JLabel();
+        LabelScore = new javax.swing.JLabel();
         BtnScissors = new javax.swing.JButton();
         BtnRock = new javax.swing.JButton();
         BtnPaper = new javax.swing.JButton();
@@ -36,17 +294,17 @@ public class Game extends javax.swing.JFrame {
         jLabel4 = new javax.swing.JLabel();
         jLabel5 = new javax.swing.JLabel();
         jLabel6 = new javax.swing.JLabel();
-        BtnExit = new javax.swing.JButton();
-        jLabel7 = new javax.swing.JLabel();
+        Announcer = new javax.swing.JLabel();
+        ImgPlayer = new javax.swing.JLabel();
+        ImgCPU = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
-        jLabel1.setText("CPU: 0");
+        LabelHealth.setFont(new java.awt.Font("Segoe UI", 0, 18)); // NOI18N
+        LabelHealth.setText("Health: 3/3");
 
-        jLabel2.setText("You: 0");
-
-        jLabel3.setFont(new java.awt.Font("Segoe UI", 0, 24)); // NOI18N
-        jLabel3.setText("SCORE");
+        LabelScore.setFont(new java.awt.Font("Segoe UI", 0, 20)); // NOI18N
+        LabelScore.setText("SCORE: 0");
 
         BtnScissors.setText("Scissors");
         BtnScissors.addActionListener(new java.awt.event.ActionListener() {
@@ -70,6 +328,11 @@ public class Game extends javax.swing.JFrame {
         });
 
         BtnGo.setText("GO");
+        BtnGo.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                BtnGoActionPerformed(evt);
+            }
+        });
 
         jLabel4.setFont(new java.awt.Font("Segoe UI", 0, 48)); // NOI18N
         jLabel4.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
@@ -83,106 +346,111 @@ public class Game extends javax.swing.JFrame {
         jLabel6.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         jLabel6.setText("CPU");
 
-        BtnExit.setText("/FF");
-        BtnExit.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                BtnExitActionPerformed(evt);
-            }
-        });
+        Announcer.setFont(new java.awt.Font("Segoe UI", 0, 24)); // NOI18N
 
-        jLabel7.setText("HEALTH");
+        ImgPlayer.setText(" ");
+
+        ImgCPU.setText(" ");
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                .addGap(53, 53, 53)
+                .addComponent(jLabel5)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(jLabel6)
+                .addGap(50, 50, 50))
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(layout.createSequentialGroup()
-                        .addContainerGap()
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(jLabel3)
-                            .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                        .addGap(0, 0, Short.MAX_VALUE)
+                        .addComponent(ImgPlayer, javax.swing.GroupLayout.PREFERRED_SIZE, 106, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(18, 18, 18)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                            .addComponent(BtnGo, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addGroup(layout.createSequentialGroup()
+                            .addComponent(Announcer, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jLabel4, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(ImgCPU, javax.swing.GroupLayout.PREFERRED_SIZE, 106, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(18, 18, 18))
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                                .addComponent(LabelScore, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(BtnGo, javax.swing.GroupLayout.PREFERRED_SIZE, 285, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                                .addComponent(LabelHealth, javax.swing.GroupLayout.DEFAULT_SIZE, 99, Short.MAX_VALUE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(BtnRock, javax.swing.GroupLayout.PREFERRED_SIZE, 91, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(BtnPaper, javax.swing.GroupLayout.PREFERRED_SIZE, 91, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(jLabel6)
-                                    .addComponent(BtnScissors, javax.swing.GroupLayout.PREFERRED_SIZE, 91, javax.swing.GroupLayout.PREFERRED_SIZE)))))
-                    .addGroup(layout.createSequentialGroup()
-                        .addGap(167, 167, 167)
-                        .addComponent(jLabel4))
-                    .addGroup(layout.createSequentialGroup()
-                        .addContainerGap()
-                        .addComponent(BtnExit, javax.swing.GroupLayout.PREFERRED_SIZE, 49, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(18, 18, 18)
-                        .addComponent(jLabel5))
-                    .addGroup(layout.createSequentialGroup()
-                        .addContainerGap()
-                        .addComponent(jLabel7, javax.swing.GroupLayout.PREFERRED_SIZE, 91, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addContainerGap(18, Short.MAX_VALUE))
+                                .addComponent(BtnScissors, javax.swing.GroupLayout.PREFERRED_SIZE, 91, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addContainerGap())))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                .addGap(22, 22, 22)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel5)
+                    .addComponent(jLabel6))
+                .addGap(34, 34, 34)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
-                        .addContainerGap()
-                        .addComponent(BtnExit))
-                    .addGroup(layout.createSequentialGroup()
-                        .addGap(27, 27, 27)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(jLabel5)
-                            .addComponent(jLabel6))))
-                .addGap(46, 46, 46)
-                .addComponent(jLabel4)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 28, Short.MAX_VALUE)
-                .addComponent(jLabel7)
+                        .addComponent(jLabel4)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 39, Short.MAX_VALUE)
+                        .addComponent(Announcer))
+                    .addComponent(ImgCPU, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(ImgPlayer, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addGap(45, 45, 45)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(BtnPaper, javax.swing.GroupLayout.PREFERRED_SIZE, 32, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(BtnScissors, javax.swing.GroupLayout.PREFERRED_SIZE, 32, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(BtnRock, javax.swing.GroupLayout.PREFERRED_SIZE, 32, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(LabelHealth))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jLabel3)
-                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(BtnPaper, javax.swing.GroupLayout.PREFERRED_SIZE, 32, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addComponent(BtnScissors, javax.swing.GroupLayout.PREFERRED_SIZE, 32, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addComponent(BtnRock, javax.swing.GroupLayout.PREFERRED_SIZE, 32, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addGroup(layout.createSequentialGroup()
-                        .addComponent(jLabel2)
-                        .addGap(5, 5, 5)
-                        .addComponent(jLabel1))
-                    .addComponent(BtnGo, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(BtnGo, javax.swing.GroupLayout.PREFERRED_SIZE, 41, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(LabelScore))
                 .addContainerGap())
         );
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
-
+    
     private void BtnScissorsActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_BtnScissorsActionPerformed
         // TODO add your handling code here:
+        SelectChoice("Scissors");
+        BtnGo.setEnabled(true);
     }//GEN-LAST:event_BtnScissorsActionPerformed
 
     private void BtnRockActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_BtnRockActionPerformed
         // TODO add your handling code here:
+        SelectChoice("Rock");
+        BtnGo.setEnabled(true);
     }//GEN-LAST:event_BtnRockActionPerformed
 
     private void BtnPaperActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_BtnPaperActionPerformed
         // TODO add your handling code here:
+        SelectChoice("Paper");
+        BtnGo.setEnabled(true);
     }//GEN-LAST:event_BtnPaperActionPerformed
 
-    private void BtnExitActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_BtnExitActionPerformed
+    private void BtnGoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_BtnGoActionPerformed
         // TODO add your handling code here:
-        TitleScreen obj = new TitleScreen();
-        obj.setVisible(true);
-        this.dispose();
-    }//GEN-LAST:event_BtnExitActionPerformed
+        if (ImgPlayer.getIcon() != null) {
+            // LOGS SCRIPT HERE | LOGS SCRIPT HERE | LOGS SCRIPT HERE | LOGS SCRIPT HERE | 
+            CPUChoice();
+        } else {
+            System.out.println("ERROR! NO CHOICE HAS BEEN SELECTED!");
+        }
+    }//GEN-LAST:event_BtnGoActionPerformed
 
+    
     /**
      * @param args the command line arguments
      */
@@ -219,17 +487,17 @@ public class Game extends javax.swing.JFrame {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton BtnExit;
+    private javax.swing.JLabel Announcer;
     private javax.swing.JButton BtnGo;
     private javax.swing.JButton BtnPaper;
     private javax.swing.JButton BtnRock;
     private javax.swing.JButton BtnScissors;
-    private javax.swing.JLabel jLabel1;
-    private javax.swing.JLabel jLabel2;
-    private javax.swing.JLabel jLabel3;
+    private javax.swing.JLabel ImgCPU;
+    private javax.swing.JLabel ImgPlayer;
+    private javax.swing.JLabel LabelHealth;
+    private javax.swing.JLabel LabelScore;
     private javax.swing.JLabel jLabel4;
     private javax.swing.JLabel jLabel5;
     private javax.swing.JLabel jLabel6;
-    private javax.swing.JLabel jLabel7;
     // End of variables declaration//GEN-END:variables
 }
