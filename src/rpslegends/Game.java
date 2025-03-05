@@ -34,7 +34,7 @@ public Game(int userId, String userName) {
     String GLCPUChoice;
     int health = 3;
     int score = 0;
-        
+    boolean highScore = true;
         
     public Game() {
         initComponents();
@@ -122,31 +122,10 @@ public Game(int userId, String userName) {
         obj.setVisible(true);
         this.dispose();
     } else {
-        
+        TitleScreen obj = new TitleScreen();
+        obj.setVisible(true);
+        this.dispose();
     }
-    }
-    
-    private void updateNamaPengguna(String userName) {
-        try {
-            Connection conn = DBConnect.getConnection();
-            if (conn != null) {
-                try {
-                    if (userName.length() > 20) {
-                        userName = userName.substring(0, 20);
-                    }
-                    String query = "UPDATE users SET user_name = ? WHERE id_user = ?";
-                    PreparedStatement pstmt = conn.prepareStatement(query);
-                    pstmt.setString(1, userName);
-                    pstmt.setInt(2, userId);
-                    pstmt.executeUpdate();
-                    pstmt.close();
-                    conn.close();
-                } catch (SQLException e) {
-                    e.printStackTrace();
-                }
-            }   } catch (SQLException ex) {
-            Logger.getLogger(Game.class.getName()).log(Level.SEVERE, null, ex);
-        }
     }
     
     private void Logging(int act) {
@@ -184,20 +163,106 @@ public Game(int userId, String userName) {
         }
     }
     
-private void simpanLeaderboard(int score) {
+    private void updateNamaPengguna(String userName) {
+        checkExistingUser(userName);
+        try {
+            Connection conn = DBConnect.getConnection();
+            if (conn != null) {
+               try {
+                    if (userName.length() > 20) {
+                        userName = userName.substring(0, 20);
+                    }
+                    String query = "UPDATE users SET user_name = ? WHERE id_user = ?";
+                    PreparedStatement pstmt = conn.prepareStatement(query);
+                    pstmt.setString(1, userName);
+                    pstmt.setInt(2, userId);
+                    pstmt.executeUpdate();
+                    pstmt.close();
+                    conn.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+        } catch (SQLException ex) {
+            Logger.getLogger(Game.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    
+    private void checkExistingUser(String userName) {
+        try {
+            Connection conn = DBConnect.getConnection();
+            if (conn != null) {
+                try {
+                    String query = "SELECT id_user FROM users WHERE user_name = ?";
+                    PreparedStatement pstmt = conn.prepareStatement(query);
+                    pstmt.setString(1, userName);
+                    ResultSet rs = pstmt.executeQuery();
+                    
+                    if (rs.next()) {
+                        int getUserId = rs.getInt("id_user");
+                        rs.close();
+                        pstmt.close();
+                        conn.close();
+                        compareScores(getUserId);
+                    }
+                    
+                    rs.close();
+                    pstmt.close();
+                    conn.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+        } catch (SQLException ex) {
+            Logger.getLogger(Game.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    private void compareScores(int getUserId) { 
+        try {
+            Connection conn = DBConnect.getConnection();
+            if (conn != null) {
+                try {
+                    String query = "SELECT score FROM leaderboard WHERE id_user = ?";
+                    PreparedStatement pstmt = conn.prepareStatement(query);
+                    pstmt.setInt(1, getUserId);
+                    ResultSet rs = pstmt.executeQuery();
+                    if (rs.next()) { 
+                        int existingScore = rs.getInt("score");
+                        if (score > existingScore) {
+                            userId = getUserId;
+                        } else {
+                           highScore = false;
+                        }
+                    }
+                    rs.close();
+                    pstmt.close();
+                    conn.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+        } catch (SQLException ex) {
+            Logger.getLogger(Game.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    
+    private void simpanLeaderboard(int score) {
         try {
             Connection conn = DBConnect.getConnection();
             if (conn != null) {
                 try {
                     if (cekIdUserDiLeaderboard(userId)) {
                         updateLeaderboard(score);
-                    } else {
+                    } else if (highScore) {
                         String query = "INSERT INTO leaderboard (id_user, score) VALUES (?, ?)";
                         PreparedStatement pstmt = conn.prepareStatement(query);
                         pstmt.setInt(1, userId);
                         pstmt.setInt(2, score);
                         pstmt.executeUpdate();
                         pstmt.close();
+                    } else {
+                        System.out.println("Error: Unknown action on leaderboard"); 
                     }
                     conn.close();
                 } catch (SQLException e) {
@@ -206,9 +271,9 @@ private void simpanLeaderboard(int score) {
             }   } catch (SQLException ex) {
             Logger.getLogger(Game.class.getName()).log(Level.SEVERE, null, ex);
         }
-}
+    }
 
-private boolean cekIdUserDiLeaderboard(int userId) {
+    private boolean cekIdUserDiLeaderboard(int userId) {
         try {
             Connection conn = DBConnect.getConnection();
             if (conn != null) {
@@ -232,10 +297,10 @@ private boolean cekIdUserDiLeaderboard(int userId) {
             Logger.getLogger(Game.class.getName()).log(Level.SEVERE, null, ex);
         }
         return false;
-}
+    }
 
 
-private void updateLeaderboard(int score) {
+    private void updateLeaderboard(int score) {
         try {
             Connection conn = DBConnect.getConnection();
             if (conn != null) {
@@ -250,10 +315,11 @@ private void updateLeaderboard(int score) {
                 } catch (SQLException e) {
                     e.printStackTrace();
                 }
-            }   } catch (SQLException ex) {
+            }
+        } catch (SQLException ex) {
             Logger.getLogger(Game.class.getName()).log(Level.SEVERE, null, ex);
         }
-}
+    }
 
 
     private void SelectChoice(String choice){

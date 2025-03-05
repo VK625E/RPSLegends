@@ -24,10 +24,27 @@ public class TitleScreen extends javax.swing.JFrame {
      * Creates new form TitleScreen
      */
     public TitleScreen() {
+        nullPurging();
         initComponents();
     }
 
-    
+    private void nullPurging() {
+        try {
+            Connection conn = DBConnect.getConnection();
+            if (conn != null) {
+                try {
+                    String query = "DELETE FROM users WHERE user_name = '' OR user_name IS NULL";
+                    PreparedStatement pstmt = conn.prepareStatement(query);
+                    pstmt.executeUpdate();
+                    pstmt.close();
+                    conn.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }   } catch (SQLException ex) {
+            Logger.getLogger(Game.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
     
     /**
      * This method is called from within the constructor to initialize the form.
@@ -108,19 +125,19 @@ public class TitleScreen extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void BtnPlayActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_BtnPlayActionPerformed
- int userId = buatAkunPengguna(""); // Membuat akun dengan nama kosong
-    if (userId != -1) {
-        String userName = dapatkanNamaPengguna(userId); // Mendapatkan nama pengguna dari database
-        if (userName != null) {
-            Game obj = new Game(userId, userName); // Kirim userId dan userName ke Game
-            obj.setVisible(true);
-            this.dispose();
+        int userId = buatAkunPengguna(""); // Membuat akun dengan nama kosong
+        if (userId != -1) {
+            String userName = dapatkanNamaPengguna(userId); // Mendapatkan nama pengguna dari database
+            if (userName != null) {
+                Game obj = new Game(userId, userName); // Kirim userId dan userName ke Game
+                obj.setVisible(true);
+                this.dispose();
+            } else {
+                JOptionPane.showMessageDialog(this, "Error when fetching username");
+            }
         } else {
-            JOptionPane.showMessageDialog(this, "Gagal mendapatkan nama pengguna.");
+            JOptionPane.showMessageDialog(this, "Error when creating account");
         }
-    } else {
-        JOptionPane.showMessageDialog(this, "Gagal membuat akun pengguna.");
-    }
     }//GEN-LAST:event_BtnPlayActionPerformed
 
     private int buatAkunPengguna(String userName) {
