@@ -42,7 +42,7 @@ public Game(int userId, String userName) {
         
     }
     
-    private void CPUChoice() { // Sekalian submit
+    private void CPUChoice() {
         String[] choices = {"Rock","Paper","Scissors"};
         Random rand = new Random();
         try {
@@ -53,7 +53,6 @@ public Game(int userId, String userName) {
         int index = rand.nextInt(choices.length);
         String CPUChoice = choices[index];
         String imagePath = "src/assets/images/" + CPUChoice + ".png";
-        // LOGS SCRIPT HERE | LOGS SCRIPT HERE | LOGS SCRIPT HERE | LOGS SCRIPT HERE | 
         ImageIcon originalIcon = new ImageIcon(imagePath);
         Image originalImage = originalIcon.getImage();
         int width = 100;
@@ -135,13 +134,13 @@ public Game(int userId, String userName) {
                 caseAction = "Game Start";
                 break;
             case 1:
-                caseAction = "Player chose " + GLPlayerChoice + ", CPU chose " + GLCPUChoice;
+                caseAction = GLPlayerChoice + " VS " + GLCPUChoice;
                 break;
             case 2:
-                caseAction = "Player lost the game";
+                caseAction = "Game over";
                 break;
             default:
-                caseAction = "Error, undocumented action";
+                caseAction = "Undocumented";
                 break;
         }
         try {
@@ -158,7 +157,8 @@ public Game(int userId, String userName) {
                 } catch (SQLException e) {
                     e.printStackTrace();
                 }
-            }   } catch (SQLException ex) {
+            }
+        } catch (SQLException ex) {
             Logger.getLogger(Game.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
@@ -268,7 +268,8 @@ public Game(int userId, String userName) {
                 } catch (SQLException e) {
                     e.printStackTrace();
                 }
-            }   } catch (SQLException ex) {
+            }
+        } catch (SQLException ex) {
             Logger.getLogger(Game.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
@@ -292,7 +293,7 @@ public Game(int userId, String userName) {
                     e.printStackTrace();
                 }
             }
-            return false; // id_user tidak ditemukan di leaderboard
+            return false;
         } catch (SQLException ex) {
             Logger.getLogger(Game.class.getName()).log(Level.SEVERE, null, ex);
         }
